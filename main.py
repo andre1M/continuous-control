@@ -1,8 +1,7 @@
-from utilities import OrnsteinUhlenbeckActionNoise, train, plot_scores
+from utilities import train, plot_scores
 from agent import DeepDeterministicPolicyGradient
 
 from unityagents import UnityEnvironment
-import numpy as np
 import torch
 
 import os
@@ -31,22 +30,19 @@ print('States look like:', state)
 state_size = len(state)
 print('States have length:', state_size)
 
-# Initialize random process
-random_proc = OrnsteinUhlenbeckActionNoise(np.zeros(action_size), 0.2)
-
 # Initialize agent
 agent = DeepDeterministicPolicyGradient(state_size, action_size, seed=0)
 
 # train with linear epsilon decrease
-scores = train(agent, env, n_episodes=2000, random_proc=random_proc)
+scores = train(agent, env, n_episodes=2000)
 
 if not os.path.exists('checkpoints'):
     os.mkdir('checkpoints')
 
 # save network weights
 checkpoint = {
-    'actor': agent.actor.state_dict(),
-    'critic': agent.critic.state_dict(),
+    'actor': agent.actor_local.state_dict(),
+    'critic': agent.critic_local.state_dict(),
     'actor_target': agent.actor_target.state_dict(),
     'critic_target': agent.critic_target.state_dict()
 }

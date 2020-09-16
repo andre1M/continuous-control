@@ -9,25 +9,27 @@ import random
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-# Taken from https://github.com/openai/baselines/blob/master/baselines/ddpg/noise.py
 class OrnsteinUhlenbeckActionNoise:
-    def __init__(self, mu, sigma, theta=.15, dt=1e-2, x0=None):
+    def __init__(self, size, seed, mu=0., theta=0.15, sigma=0.2):
+        """Initialize parameters and noise process."""
+
+        random.seed(seed)
+        self.mu = mu * np.ones(size)
+        self.state = self.mu.copy()
         self.theta = theta
-        self.mu = mu
         self.sigma = sigma
-        self.dt = dt
-        self.x0 = x0
-        self.x_prev = 0
         self.reset()
 
-    def __call__(self):
-        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt \
-            + self.sigma * np.sqrt(self.dt) * np.random.normal(size=self.mu.shape)
-        self.x_prev = x
-        return x
-
     def reset(self):
-        self.x_prev = self.x0 if self.x0 is not None else np.zeros_like(self.mu)
+        """Reset the internal state (= noise) to mean (mu)."""
+        self.state = self.mu.copy()
+
+    def __call__(self):
+        """Update internal state and return it as a noise sample."""
+        x = self.state
+        dx = self.theta * (self.mu - x) + self.sigma * np.array([random.random() for i in range(len(x))])
+        self.state = x + dx
+        return self.state
 
     def __repr__(self):
         return 'OrnsteinUhlenbeckActionNoise(mu={}, sigma={})'.format(self.mu, self.sigma)
@@ -113,15 +115,14 @@ class ReplayBuffer:
         return states, actions, rewards, next_states, dones
 
 
-def train(agent, env, random_proc, n_episodes=2000):
+def train(agent, env, n_episodes=2000, max_iter=350):
     """
-    Deep Q-Learning.
-    Linear epsilon decline.
+    Train a Reinforcement Learning agent.
 
     :param agent: agent object to be trained;
     :param env: environment callable;
     :param n_episodes: maximum number of training episodes;
-    :param random_proc: (callable) random process;
+    :param max_iter: maximum number of time steps per episode;
     :return: scores per episode.
     """
 
@@ -133,11 +134,12 @@ def train(agent, env, random_proc, n_episodes=2000):
     for i_episode in range(1, n_episodes + 1):
         env_info = env.reset(train_mode=True)[brain_name]   # reset the environment
         state = env_info.vector_observations[0]             # get the current state
+        agent.reset()
         score = 0                                           # reset score for new episode
 
-        while True:
-            action = agent.act(state, random_proc)                  # select action
-            action = action.cpu().numpy()[0]                        # convert to numpy array
+        i = 0
+        while i < max_iter:
+            action = agent.act(state)                               # select action
             env_info = env.step(action)[brain_name]                 # get environment response to the action
             next_state = env_info.vector_observations[0]            # get the next state
             reward = env_info.rewards[0]                            # get the reward
@@ -145,6 +147,7 @@ def train(agent, env, random_proc, n_episodes=2000):
             agent.step(state, action, reward, next_state, done)     # process experience
             state = next_state
             score += reward
+            i += 1
             if done:
                 break
 
@@ -155,8 +158,12 @@ def train(agent, env, random_proc, n_episodes=2000):
         print('\rEpisode {}\tAverage Score: {:.2f}'.format(i_episode, np.mean(scores_window)), end="")
 
         if i_episode % 100 == 0:
+            torch.save(agent.actor_local.state_dict(), 'checkpoint_actor.pth')
+            torch.save(agent.critic_local.state_dict(), 'checkpoint_critic.pth')
             print('\rEpisode {}\tAverage Score: {:.2f}'.format(i_episode, np.mean(scores_window)))
         if np.mean(scores_window) >= 30.0:
+            torch.save(agent.actor_local.state_dict(), 'final_checkpoint_actor.pth')
+            torch.save(agent.critic_local.state_dict(), 'final_checkpoint_critic.pth')
             print('\nEnvironment solved in {:d} episodes!\tAverage Score: {:.2f}'.format(i_episode - 100,
                                                                                          np.mean(scores_window)))
             break
