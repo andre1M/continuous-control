@@ -11,13 +11,14 @@ import random
 
 # # # CONSTANT VALUES # # #
 ACTOR_LR        = 1e-4          # Actor learn rate
-CRITIC_LR       = 2e-3          # Critic learn rate
-CRITIC_WD       = 1e-4          # Critic weight decay
-DISCOUNT_FACTOR = 0.99          # Discounting factor for rewards
+CRITIC_LR       = 1e-3          # Critic learn rate
+CRITIC_WD       = 0             # Critic weight decay
+DISCOUNT_FACTOR = 1.00          # Discounting factor for rewards
 SOFT_UPDATE     = 1e-3          # Soft update ratio for target network
 W_INIT_LIMIT    = 3e-3          # Network weights and biases initialization range (-val, val)
-MINIBATCH_SIZE  = 64            # Number of experience tuples to be sampled for learning
+MINIBATCH_SIZE  = 128           # Number of experience tuples to be sampled for learning
 BUFFER_SIZE     = int(1e6)      # Replay memory buffer size
+UPDATE_EVERY    = 10            # Parameters update frequency
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # # # CONSTANT VALUES # # #
@@ -45,13 +46,13 @@ class DeepDeterministicPolicyGradient:
         random.seed(seed)
 
         # Initialize networks and optimizers
-        self.actor_local = Actor(self.observation_size, self.action_size, 256, 512, 256, W_INIT_LIMIT).to(DEVICE)
-        self.actor_target = Actor(self.observation_size, self.action_size, 256, 512, 256, W_INIT_LIMIT).to(DEVICE)
+        self.actor_local = Actor(self.observation_size, self.action_size).to(DEVICE)
+        self.actor_target = Actor(self.observation_size, self.action_size).to(DEVICE)
         self.hard_update(self.actor_local, self.actor_target)
         self.actor_optim = Adam(self.actor_local.parameters(), lr=ACTOR_LR)
 
-        self.critic_local = Critic(self.observation_size, self.action_size, 256, 512, 256, W_INIT_LIMIT)
-        self.critic_target = Critic(self.observation_size, self.action_size, 256, 512, 256, W_INIT_LIMIT)
+        self.critic_local = Critic(self.observation_size, self.action_size)
+        self.critic_target = Critic(self.observation_size, self.action_size)
         self.hard_update(self.critic_local, self.critic_target)
         self.critic_optim = Adam(self.critic_local.parameters(), lr=CRITIC_LR, weight_decay=CRITIC_WD)
 
@@ -59,6 +60,8 @@ class DeepDeterministicPolicyGradient:
 
         # Initialize replay memory
         self.memory = ReplayBuffer(BUFFER_SIZE, MINIBATCH_SIZE, seed)
+
+        self.t_step = 0
 
     def step(self, state, action: int, reward: float, next_state, done):
         """
@@ -74,12 +77,15 @@ class DeepDeterministicPolicyGradient:
         # Save experience in replay memory
         self.memory.push(state, action, reward, next_state, done)
 
-        # Learn, if there is enough samples in memory
-        if len(self.memory) > MINIBATCH_SIZE:
-            # sample experiences from memory
-            experiences = self.memory.sample()
-            # learn from sampled experiences
-            self.learn(experiences, DISCOUNT_FACTOR)
+        self.t_step = (self.t_step + 1) % UPDATE_EVERY
+
+        if self.t_step == 0:
+            # Learn, if there is enough samples in memory
+            if len(self.memory) > MINIBATCH_SIZE:
+                # sample experiences from memory
+                experiences = self.memory.sample()
+                # learn from sampled experiences
+                self.learn(experiences)
 
     def act(self, state, explore=True):
         """
@@ -101,12 +107,11 @@ class DeepDeterministicPolicyGradient:
 
         return np.clip(action, self.action_low, self.action_high)
 
-    def learn(self, experiences, gamma: float):
+    def learn(self, experiences):
         """
         Update value parameters using given batch of experience tuples.
 
         :param experiences: (Tuple[torch.Tensor]) tuple of (s, a, r, s', done) tuples;
-        :param gamma: discount factor.
         """
 
         states, actions, rewards, next_states, dones = experiences

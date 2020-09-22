@@ -137,8 +137,7 @@ def train(agent, env, n_episodes=2000, max_iter=350):
         agent.reset()
         score = 0                                           # reset score for new episode
 
-        i = 0
-        while i < max_iter:
+        while True:
             action = agent.act(state)                               # select action
             env_info = env.step(action)[brain_name]                 # get environment response to the action
             next_state = env_info.vector_observations[0]            # get the next state
@@ -147,7 +146,6 @@ def train(agent, env, n_episodes=2000, max_iter=350):
             agent.step(state, action, reward, next_state, done)     # process experience
             state = next_state
             score += reward
-            i += 1
             if done:
                 break
 
