@@ -10,29 +10,24 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class OrnsteinUhlenbeckActionNoise:
-    def __init__(self, size, seed, mu=0., theta=0.15, sigma=0.2):
+    def __init__(self, size, seed, theta=0.15, sigma=0.2):
         """Initialize parameters and noise process."""
-
-        random.seed(seed)
-        self.mu = mu * np.ones(size)
-        self.state = self.mu.copy()
+        self.state = np.zeros(size)
         self.theta = theta
         self.sigma = sigma
-        self.reset()
+
+        np.random.seed(seed)
 
     def reset(self):
         """Reset the internal state (= noise) to mean (mu)."""
-        self.state = self.mu.copy()
+        self.state.fill(0)
 
     def __call__(self):
         """Update internal state and return it as a noise sample."""
         x = self.state
-        dx = self.theta * (self.mu - x) + self.sigma * np.array([random.random() for i in range(len(x))])
+        dx = self.theta * (-x) + self.sigma * np.random.randn(*x.shape)
         self.state = x + dx
         return self.state
-
-    def __repr__(self):
-        return 'OrnsteinUhlenbeckActionNoise(mu={}, sigma={})'.format(self.mu, self.sigma)
 
 
 class ReplayBuffer:
@@ -115,14 +110,13 @@ class ReplayBuffer:
         return states, actions, rewards, next_states, dones
 
 
-def train(agent, env, n_episodes=2000, max_iter=350):
+def train(agent, env, n_episodes=2000):
     """
     Train a Reinforcement Learning agent.
 
     :param agent: agent object to be trained;
     :param env: environment callable;
     :param n_episodes: maximum number of training episodes;
-    :param max_iter: maximum number of time steps per episode;
     :return: scores per episode.
     """
 
@@ -138,7 +132,7 @@ def train(agent, env, n_episodes=2000, max_iter=350):
         score = 0                                           # reset score for new episode
 
         while True:
-            action = agent.act(state)                               # select action
+            action = agent.act(state, explore=True)                 # select action
             env_info = env.step(action)[brain_name]                 # get environment response to the action
             next_state = env_info.vector_observations[0]            # get the next state
             reward = env_info.rewards[0]                            # get the reward

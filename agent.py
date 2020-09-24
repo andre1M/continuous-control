@@ -10,15 +10,11 @@ import random
 
 
 # # # CONSTANT VALUES # # #
-ACTOR_LR        = 1e-4          # Actor learn rate
-CRITIC_LR       = 1e-3          # Critic learn rate
-CRITIC_WD       = 0             # Critic weight decay
-DISCOUNT_FACTOR = 1.00          # Discounting factor for rewards
-SOFT_UPDATE     = 1e-3          # Soft update ratio for target network
-W_INIT_LIMIT    = 3e-3          # Network weights and biases initialization range (-val, val)
-MINIBATCH_SIZE  = 128           # Number of experience tuples to be sampled for learning
 BUFFER_SIZE     = int(1e6)      # Replay memory buffer size
-UPDATE_EVERY    = 10            # Parameters update frequency
+MINIBATCH_SIZE  = 128           # Number of experience tuples to be sampled for learning
+DISCOUNT_FACTOR = 0.99          # Discounting factor for rewards
+SOFT_UPDATE     = 1e-3          # Soft update ratio for target network
+UPDATE_EVERY    = 2             # Parameters update frequency
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # # # CONSTANT VALUES # # #
@@ -46,22 +42,27 @@ class DeepDeterministicPolicyGradient:
         random.seed(seed)
 
         # Initialize networks and optimizers
-        self.actor_local = Actor(self.observation_size, self.action_size).to(DEVICE)
-        self.actor_target = Actor(self.observation_size, self.action_size).to(DEVICE)
+        self.actor_local = Actor(self.observation_size, self.action_size, seed=seed).to(DEVICE)
+        self.actor_target = Actor(self.observation_size, self.action_size, seed=seed).to(DEVICE)
         self.hard_update(self.actor_local, self.actor_target)
-        self.actor_optim = Adam(self.actor_local.parameters(), lr=ACTOR_LR)
+        self.actor_optim = Adam(self.actor_local.parameters())
 
-        self.critic_local = Critic(self.observation_size, self.action_size)
-        self.critic_target = Critic(self.observation_size, self.action_size)
+        self.critic_local = Critic(self.observation_size, self.action_size, seed=seed).to(DEVICE)
+        self.critic_target = Critic(self.observation_size, self.action_size, seed=seed).to(DEVICE)
         self.hard_update(self.critic_local, self.critic_target)
-        self.critic_optim = Adam(self.critic_local.parameters(), lr=CRITIC_LR, weight_decay=CRITIC_WD)
+        self.critic_optim = Adam(self.critic_local.parameters())
 
-        self.noise = OrnsteinUhlenbeckActionNoise(action_size, seed)
+        self.noise = OrnsteinUhlenbeckActionNoise(action_size, seed, theta=0.15, sigma=0.2)
 
         # Initialize replay memory
         self.memory = ReplayBuffer(BUFFER_SIZE, MINIBATCH_SIZE, seed)
 
         self.t_step = 0
+        self.eps_t = 0
+        self.no_decay_steps = 0
+        self.eps = 1
+        self.eps_decay = 0.99995
+        self.eps_min = 0.01
 
     def step(self, state, action: int, reward: float, next_state, done):
         """
@@ -94,16 +95,21 @@ class DeepDeterministicPolicyGradient:
         :param state: (array_like) current state;
         :param explore: (Bool) explore or exploit.
         """
+        self.eps_t += 1
 
         state = torch.from_numpy(state).float().to(DEVICE)
         self.actor_local.eval()
         with torch.no_grad():
-            action = self.actor_local(state).cpu().data.numpy()
+            action = self.actor_local(state.unsqueeze(0)).cpu().data.numpy()
         self.actor_local.train()
 
         # Add noise for exploration
         if explore:
-            action += self.noise()
+            if self.eps_t > self.no_decay_steps:
+                action += self.eps * self.noise()
+                self.eps = max(self.eps_min, self.eps * self.eps_decay)
+            else:
+                action += self.noise()
 
         return np.clip(action, self.action_low, self.action_high)
 
@@ -129,7 +135,6 @@ class DeepDeterministicPolicyGradient:
         # Update Actor
         action_predictions = self.actor_local(states)
         actor_loss = -self.critic_local(states, action_predictions).mean()
-        actor_loss = (-self.critic_local(states, self.actor_local(states))).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()
@@ -140,6 +145,10 @@ class DeepDeterministicPolicyGradient:
 
     def reset(self):
         self.noise.reset()
+
+    def make_checkpoint(self):
+        torch.save(self.actor_local.state_dict(), 'checkpoint_actor.pth')
+        torch.save(self.critic_local.state_dict(), 'checkpoint_critic.pth')
 
     @staticmethod
     def soft_update(local_model, target_model, tau: float):
