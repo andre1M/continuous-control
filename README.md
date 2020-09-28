@@ -71,11 +71,6 @@ Please follow these steps to be able to run this project:
     ```
    or, again, simply run this file in you IDE.
 
-
-### Instructions
-
-Coming soon...
-
 ### Technical report
  
-Coming soon...
+Check out [technical report](REPORT.md) for implementation details.

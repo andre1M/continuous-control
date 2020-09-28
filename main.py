@@ -48,11 +48,11 @@ checkpoint = {
 }
 torch.save(checkpoint, 'checkpoints/ddpg.pth')
 
-if not os.path.exists('plots'):
-    os.mkdir('plots')
+if not os.path.exists('figures'):
+    os.mkdir('figures')
 
 # plot the scores
-plot_scores(scores, filename='plots/plot_ddpg.png')
+plot_scores(scores, filename='figures/score_ddpg.png')
 
 # close environment
 env.close()
