@@ -46,3 +46,11 @@ Ornstein - Uhlenbeck Random Process for exploration is initiated with &theta; = 
 Agent score evolution during training is given in the figure below. See [REEDME](README.md) for trained agent visualization.
 
 ![Score][image3]
+
+## Ideas for future work
+
+There are several improvements that can be done to this project:
+- running several agents in parallel to collect samples should speedup learning;
+- reward normalization can improve stability of learning process due to reduced noise in the rewards;
+- apparently, DDPG is not the best algorithm for this task; more suitable approaches may work better, such as D4PG, TNPO or TRPO;
+- use implemented algorithm for different environment, such as [Crawler](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Learning-Environment-Examples.md#crawler) to analyse stability and sample efficiency of the solution, as well as generalization capabilities.
