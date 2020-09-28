@@ -31,6 +31,6 @@ A big part of this project was tuning the hyper parameters. Used values are give
 | Soft update frequency     	| 2       	|
 | Soft update coefficient   	| 1e-3    	|
 
-Ornstein - Uhlenbeck Random Process for exploration is initiated with \theta = 0.15 amd \sigma = 0.2. Agent score evolution during training is given in the figure below.
+Ornstein - Uhlenbeck Random Process for exploration is initiated with &theta; = 0.15 amd &sigma; = 0.2. Agent score evolution during training is given in the figure below.
 
 ![Score][image3]
