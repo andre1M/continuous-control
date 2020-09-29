@@ -4,6 +4,7 @@ import torch
 
 from collections import namedtuple, deque
 import random
+import logging
 
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -120,6 +121,8 @@ def train(agent, env, n_episodes=2000):
     :return: scores per episode.
     """
 
+    logging.basicConfig(level=logging.INFO, filename='training.log', filemode='w', format='%(asctime)s - %(message)s')
+
     brain_name = env.brain_names[0]
 
     scores = []                         # list containing scores from each episode
@@ -153,11 +156,15 @@ def train(agent, env, n_episodes=2000):
             torch.save(agent.actor_local.state_dict(), 'checkpoint_actor.pth')
             torch.save(agent.critic_local.state_dict(), 'checkpoint_critic.pth')
             print('\rEpisode {}\tAverage Score: {:.2f}'.format(i_episode, np.mean(scores_window)))
+            logging.info(f'Score average over last 100 episodes reached {np.mean(scores_window)} '
+                         f'after {i_episode} episodes.')
         if np.mean(scores_window) >= 30.0:
             torch.save(agent.actor_local.state_dict(), 'final_checkpoint_actor.pth')
             torch.save(agent.critic_local.state_dict(), 'final_checkpoint_critic.pth')
             print('\nEnvironment solved in {:d} episodes!\tAverage Score: {:.2f}'.format(i_episode - 100,
                                                                                          np.mean(scores_window)))
+            logging.info(f'Environment solved in {i_episode - 100} episodes '
+                         f'with average score of {np.mean(scores_window)}')
             break
     return scores
 
