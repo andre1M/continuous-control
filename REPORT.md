@@ -29,15 +29,15 @@ A big part of this project was tuning the hyperparameters. Values were chosen ac
 | Hyperparameter            	| Value   	|
 |---------------------------	|---------	|
 | Replay buffer size        	| 1e6     	|
-| Minibatch size            	| 128     	|
+| Minibatch size            	| 512     	|
 | Discount factor           	| 0.99    	|
 | Actor Learning Rate       	| 1e-3    	|
 | Critic Learning Rate      	| 1e-3    	|
 | Epsilon initial value     	| 1       	|
 | Epsilon minimal value     	| 0.01    	|
-| Epsilon exponential decay 	| 0.99995 	|
-| Soft update frequency     	| 2       	|
-| Soft update coefficient   	| 1e-3    	|
+| Epsilon exponential decay 	| 0.9995 	|
+| Soft update frequency     	| 35       	|
+| Soft update coefficient   	| 5e-3    	|
 
 Ornstein - Uhlenbeck Random Process for exploration is initiated with &theta; = 0.15 amd &sigma; = 0.2. 
 
