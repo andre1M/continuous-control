@@ -121,6 +121,8 @@ def train(agent, env, n_episodes=2000):
     :return: scores per episode.
     """
 
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
     logging.basicConfig(level=logging.INFO, filename='training.log', filemode='w', format='%(asctime)s - %(message)s')
 
     brain_name = env.brain_names[0]
