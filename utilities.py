@@ -126,8 +126,10 @@ def train(agent, env, n_episodes=2000):
     logging.basicConfig(level=logging.INFO, filename='training.log', filemode='w', format='%(asctime)s - %(message)s')
 
     brain_name = env.brain_names[0]
+    solved = False
 
     scores = []                         # list containing scores from each episode
+    scores_avg = []
     scores_window = deque(maxlen=100)   # last 100 scores
 
     for i_episode in range(1, n_episodes + 1):
@@ -151,32 +153,33 @@ def train(agent, env, n_episodes=2000):
         # save recent scores
         scores_window.append(score)
         scores.append(score)
+        scores_avg.append(np.mean(scores_window))
 
         print('\rEpisode {}\tAverage Score: {:.2f}'.format(i_episode, np.mean(scores_window)), end="")
 
         if i_episode % 100 == 0:
-            torch.save(agent.actor_local.state_dict(), 'checkpoint_actor.pth')
-            torch.save(agent.critic_local.state_dict(), 'checkpoint_critic.pth')
             print('\rEpisode {}\tAverage Score: {:.2f}'.format(i_episode, np.mean(scores_window)))
             logging.info(f'Score average over last 100 episodes reached {np.mean(scores_window)} '
                          f'after {i_episode} episodes.')
-        if np.mean(scores_window) >= 30.0:
-            torch.save(agent.actor_local.state_dict(), 'final_checkpoint_actor.pth')
-            torch.save(agent.critic_local.state_dict(), 'final_checkpoint_critic.pth')
+        if np.mean(scores_window) >= 30.0 and not solved:
             print('\nEnvironment solved in {:d} episodes!\tAverage Score: {:.2f}'.format(i_episode - 100,
                                                                                          np.mean(scores_window)))
             logging.info(f'Environment solved in {i_episode - 100} episodes '
                          f'with average score of {np.mean(scores_window)}')
-            break
-    return scores
+            solved = True
+
+    return scores, scores_avg
 
 
-def plot_scores(scores, filename):
+def plot_scores(scores, avg_scores, filename):
     fig, ax = plt.subplots(figsize=(6, 4), dpi=100)
-    ax.plot(np.arange(len(scores)), scores)
+    ax.plot(np.arange(len(scores)), scores, label='Scores')
+    ax.plot(np.arange(len(scores)), avg_scores, label='Average scores')
     ax.set_ylabel('Score', fontweight='bold')
     ax.set_xlabel('Episode #', fontweight='bold')
     ax.set_title('Score evolution over training', fontweight='bold')
+    ax.legend(loc='upper left')
     fig.tight_layout()
     fig.savefig(filename)
     plt.close(fig)
+

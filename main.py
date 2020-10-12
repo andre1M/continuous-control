@@ -34,7 +34,7 @@ print('States have length:', state_size)
 agent = DeepDeterministicPolicyGradient(state_size, action_size, seed=0)
 
 # train with linear epsilon decrease
-scores = train(agent, env, n_episodes=2000)
+scores, scores_avg = train(agent, env, n_episodes=600)
 
 if not os.path.exists('checkpoints'):
     os.mkdir('checkpoints')
@@ -52,7 +52,7 @@ if not os.path.exists('figures'):
     os.mkdir('figures')
 
 # plot the scores
-plot_scores(scores, filename='figures/score_ddpg.png')
+plot_scores(scores, scores_avg, filename='figures/score_ddpg.png')
 
 # close environment
 env.close()
